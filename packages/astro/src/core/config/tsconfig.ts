@@ -1,14 +1,39 @@
 import { deepmerge } from 'deepmerge-ts';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import * as tsr from 'tsconfig-resolver';
+import type { CompilerOptions, TypeAcquisition } from 'typescript';
 
-export const defaultTSConfig: tsr.TsConfigJson = { extends: 'astro/tsconfigs/base' };
+// Adapted from https://github.com/unjs/pkg-types/blob/main/src/types/tsconfig.ts
+type StripEnums<T extends Record<string, any>> = {
+	[K in keyof T]: T[K] extends boolean
+		? T[K]
+		: T[K] extends string
+		? T[K]
+		: T[K] extends object
+		? T[K]
+		: T[K] extends Array<any>
+		? T[K]
+		: T[K] extends undefined
+		? undefined
+		: any;
+};
+
+export interface TSConfig {
+	compilerOptions?: StripEnums<CompilerOptions>;
+	compileOnSave?: boolean;
+	extends?: string | [];
+	files?: string[];
+	include?: string[];
+	exclude?: string[];
+	typeAcquisition?: TypeAcquisition;
+}
+
+export const defaultTSConfig: TSConfig = { extends: 'astro/tsconfigs/base' };
 
 export type frameworkWithTSSettings = 'vue' | 'react' | 'preact' | 'solid-js';
 // The following presets unfortunately cannot be inside the specific integrations, as we need
 // them even in cases where the integrations are not installed
-export const presets = new Map<frameworkWithTSSettings, tsr.TsConfigJson>([
+export const presets = new Map<frameworkWithTSSettings, TSConfig>([
 	[
 		'vue', // Settings needed for template intellisense when using Volar
 		{
