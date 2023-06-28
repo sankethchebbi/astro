@@ -127,7 +127,7 @@ importers:
   examples/basics:
     dependencies:
       astro:
-        specifier: workspace:*
+        specifier: ^2.7.1
         version: link:../../packages/astro
 
   examples/blog:
