@@ -24,21 +24,25 @@ function incrementTransitionNumber(result: SSRResult) {
 	return num;
 }
 
-function createTransitionName(result: SSRResult) {
-	return `astro-transition-${incrementTransitionNumber(result)}`;
+function createTransitionScope(result: SSRResult, hash: string) {
+	const num = incrementTransitionNumber(result);
+	return `astro-${hash}-${num}`;
 }
-
 export function renderTransition(result: SSRResult, hash: string, animationName: string | undefined, transitionName: string) {
+	// Default animation is morph
 	if(!animationName) {
-		// TODO error?
-		return '';
+		animationName = "morph";
 	}
 	const animation = animations[animationName as keyof typeof animations];
+
+	const scope = createTransitionScope(result, hash);
+
+	// Default transition name is the scope of the element, ie HASH-1
 	if(!transitionName) {
-		transitionName = createTransitionName(result);
+		transitionName = scope;
 	}
 
-	const styles = markHTMLString(`<style>[data-astro-transition-scope="${hash}"] {
+	const styles = markHTMLString(`<style>[data-astro-transition-scope="${scope}"] {
 		view-transition-name: ${transitionName};
 	}
 	${animationName === 'morph' ? '' : `
@@ -63,5 +67,5 @@ export function renderTransition(result: SSRResult, hash: string, animationName:
 
 	result.extraHead.push(styles);
 
-	return '';
+	return scope;
 }
