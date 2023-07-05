@@ -7,19 +7,6 @@ import type {
 import { markHTMLString } from './escape.js';
 import { slide, fade } from '../../transitions/index.js';
 
-const animationsOld = {
-	'slide': {
-		old: '--astro-animate-old-slideout',
-		new: '--astro-animate-new-slidein',
-		backOld: '--astro-animate-back-old-slideout-names',
-		backNew: '--astro-animate-back-new-slideout-names',
-	},
-	'fade': {
-		old: '--astro-animate-old-fade',
-		new: '--astro-animate-new-fade',
-	}
-};
-
 const transitionNameMap = new WeakMap<SSRResult, number>();
 function incrementTransitionNumber(result: SSRResult) {
 	let num = 1;
