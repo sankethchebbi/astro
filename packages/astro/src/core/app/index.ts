@@ -40,7 +40,7 @@ export interface MatchOptions {
 }
 
 export class App {
-	#env: Environment;
+	protected environment: Environment;
 	#manifest: SSRManifest;
 	#manifestData: ManifestData;
 	#routeDataToRouteInfo: Map<RouteData, RouteInfo>;
@@ -58,7 +58,7 @@ export class App {
 			routes: manifest.routes.map((route) => route.routeData),
 		};
 		this.#routeDataToRouteInfo = new Map(manifest.routes.map((route) => [route.routeData, route]));
-		this.#env = createEnvironment({
+		this.environment = createEnvironment({
 			adapterName: manifest.adapterName,
 			logging: this.#logging,
 			markdown: manifest.markdown,
@@ -236,27 +236,27 @@ export class App {
 				route: routeData,
 				status,
 				mod,
-				env: this.#env,
+				env: this.environment,
 			});
 
 			const apiContext = createAPIContext({
 				request: renderContext.request,
 				params: renderContext.params,
 				props: renderContext.props,
-				site: this.#env.site,
-				adapterName: this.#env.adapterName,
+				site: this.environment.site,
+				adapterName: this.environment.adapterName,
 			});
 			let response;
 			if (page.onRequest) {
 				response = await callMiddleware<Response>(
-					this.#env.logging,
+					this.environment.logging,
 					page.onRequest as MiddlewareResponseHandler,
 					apiContext,
 					() => {
 						return renderPage({
 							mod,
 							renderContext,
-							env: this.#env,
+							env: this.environment,
 							cookies: apiContext.cookies,
 							isCompressHTML,
 						});
@@ -266,7 +266,7 @@ export class App {
 				response = await renderPage({
 					mod,
 					renderContext,
-					env: this.#env,
+					env: this.environment,
 					cookies: apiContext.cookies,
 					isCompressHTML,
 				});
@@ -299,11 +299,17 @@ export class App {
 			pathname,
 			route: routeData,
 			status,
-			env: this.#env,
+			env: this.environment,
 			mod: handler as any,
 		});
 
-		const result = await callEndpoint(handler, this.#env, ctx, this.#logging, page.onRequest);
+		const result = await callEndpoint(
+			handler,
+			this.environment,
+			ctx,
+			this.#logging,
+			page.onRequest
+		);
 
 		if (result.type === 'response') {
 			if (result.response.headers.get('X-Astro-Response') === 'Not-Found') {
