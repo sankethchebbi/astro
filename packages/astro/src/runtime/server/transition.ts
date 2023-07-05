@@ -1,7 +1,13 @@
-import type { SSRResult } from '../../@types/astro';
+import type {
+	SSRResult,
+	TransitionAnimation,
+	TransitionDirectionalAnimations,
+	TransitionAnimationValue,
+} from '../../@types/astro';
 import { markHTMLString } from './escape.js';
+import { slide, fade } from '../../transitions/index.js';
 
-const animations = {
+const animationsOld = {
 	'slide': {
 		old: '--astro-animate-old-slideout',
 		new: '--astro-animate-new-slidein',
@@ -28,12 +34,23 @@ function createTransitionScope(result: SSRResult, hash: string) {
 	const num = incrementTransitionNumber(result);
 	return `astro-${hash}-${num}`;
 }
-export function renderTransition(result: SSRResult, hash: string, animationName: string | undefined, transitionName: string) {
-	// Default animation is morph
-	if(!animationName) {
-		animationName = "morph";
+export function renderTransition(result: SSRResult, hash: string, animationName: TransitionAnimationValue | undefined, transitionName: string) {
+	let animations: TransitionDirectionalAnimations | null = null;
+	switch(animationName) {
+		case 'fade': {
+			animations = fade();
+			break;
+		}
+		case 'slide': {
+			animations = slide();
+			break;
+		}
+		default: {
+			if(typeof animationName === 'object') {
+				animations = animationName;
+			}
+		}
 	}
-	const animation = animations[animationName as keyof typeof animations];
 
 	const scope = createTransitionScope(result, hash);
 
@@ -43,29 +60,93 @@ export function renderTransition(result: SSRResult, hash: string, animationName:
 	}
 
 	const styles = markHTMLString(`<style>[data-astro-transition-scope="${scope}"] {
-		view-transition-name: ${transitionName};
-	}
-	${animationName === 'morph' ? '' : `
-	::view-transition-old(${transitionName}) {
-		animation: var(${animation.old});
-	}
-	::view-transition-new(${transitionName}) {
-		animation: var(${animation.new});
-	}
-	
-	${('backOld' in animation) && ('backNew' in animation) ? `
-	.astro-back-transition::view-transition-old(${transitionName}) {
-		animation-name: var(${animation.backOld});
-	}
-	.astro-back-transition::view-transition-new(${transitionName}) {
-		animation-name: var(${animation.backNew});
-	}
-	`.trim() : ''}
-	
+	view-transition-name: ${transitionName};
+}
+	${!animations ? '' : `
+::view-transition-old(${transitionName}) {
+	${stringifyAnimation(animations.forwards.old)}
+}
+::view-transition-new(${transitionName}) {
+	${stringifyAnimation(animations.forwards.new)}
+}
+
+.astro-back-transition::view-transition-old(${transitionName}) {
+	${stringifyAnimation(animations.backwards.old)}
+}
+.astro-back-transition::view-transition-new(${transitionName}) {
+	${stringifyAnimation(animations.backwards.new)}
+}
 	`.trim()}
 	</style>`)
 
 	result.extraHead.push(styles);
 
 	return scope;
+}
+
+type AnimationBuilder = {
+	toString(): string;
+	[key: string]: string[] | ((k: string) => string);	
+}
+
+function addAnimationProperty(builder: AnimationBuilder, prop: string, value: string | number) {
+	let arr = builder[prop];
+	if(Array.isArray(arr)) {
+		arr.push(value.toString());
+	} else {
+		builder[prop] = [value.toString()];
+	}
+}
+
+function animationBuilder(): AnimationBuilder {
+	return {
+		toString() {
+			let out = '';
+			for(let k in this) {
+				let value = this[k];
+				if(Array.isArray(value)) {
+					out += `\n\t${k}: ${value.join(', ')};`
+				}
+			}
+			return out;
+		}
+	};
+}
+
+function stringifyAnimation(anim: TransitionAnimation | TransitionAnimation[]): string {
+	if(Array.isArray(anim)) {
+		return stringifyAnimations(anim);
+	} else {
+		return stringifyAnimations([anim]);
+	}
+}
+
+function stringifyAnimations(anims: TransitionAnimation[]): string {
+	const builder = animationBuilder();
+
+	for(const anim of anims) {
+		/*300ms cubic-bezier(0.4, 0, 0.2, 1) both astroSlideFromRight;*/
+		if(anim.duration) {
+			addAnimationProperty(builder, 'animation-duration', toTimeValue(anim.duration));
+		}
+		if(anim.easing) {
+			addAnimationProperty(builder, 'animation-timing-function', anim.easing);
+		}
+		if(anim.direction) {
+			addAnimationProperty(builder, 'animation-direction', anim.direction);
+		}
+		if(anim.delay) {
+			addAnimationProperty(builder, 'animation-delay', anim.delay);
+		}
+		if(anim.fillMode) {
+			addAnimationProperty(builder, 'animation-fill-mode', anim.fillMode);
+		}
+		addAnimationProperty(builder, 'animation-name', anim.name);
+	}
+	
+	return builder.toString();
+}
+
+function toTimeValue(num: number | string) {
+	return typeof num === 'number' ? num + 'ms' : num;
 }
