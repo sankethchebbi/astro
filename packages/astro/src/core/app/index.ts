@@ -203,7 +203,7 @@ export class App {
 	): Promise<Response> {
 		const url = new URL(request.url);
 		const pathname = prependForwardSlash(this.removeBase(url.pathname));
-		const info = this.#routeDataToRouteInfo.get(routeData!)!;
+		const info = this.#routeDataToRouteInfo.get(routeData)!;
 		const isCompressHTML = this.#manifest.compressHTML ?? false;
 		// may be used in the future for handling rel=modulepreload, rel=icon, rel=manifest etc.
 		const links = new Set<never>();
@@ -227,7 +227,6 @@ export class App {
 			const mod = (await page.page()) as any;
 			const renderContext = await createRenderContext({
 				request,
-				origin: url.origin,
 				pathname,
 				componentMetadata: this.#manifest.componentMetadata,
 				scripts,
@@ -295,7 +294,6 @@ export class App {
 
 		const ctx = await createRenderContext({
 			request,
-			origin: url.origin,
 			pathname,
 			route: routeData,
 			status,

@@ -853,7 +853,7 @@ export interface AstroUserConfig {
 		 * @docs
 		 * @name build.split
 		 * @type {boolean}
-		 * @default {false}
+		 * @default `false`
 		 * @version 2.7.0
 		 * @description
 		 * Defines how the SSR code should be bundled when built.
@@ -872,6 +872,27 @@ export interface AstroUserConfig {
 		 * ```
 		 */
 		split?: boolean;
+
+		/**
+		 * @docs
+		 * @name build.excludeMiddleware
+		 * @type {boolean}
+		 * @default {false}
+		 * @version 2.8.0
+		 * @description
+		 * Defines whether or not any SSR middleware code will be bundled when built.
+		 *
+		 * When enabled, middleware code is not bundled and imported by all pages during the build. To instead execute and import middleware code manually, set `build.excludeMiddleware: true`:
+		 *
+		 * ```js
+		 * {
+		 *   build: {
+		 *     excludeMiddleware: true
+		 *   }
+		 * }
+		 * ```
+		 */
+		excludeMiddleware?: boolean;
 	};
 
 	/**
@@ -1398,7 +1419,6 @@ export interface AstroSettings {
 	tsConfig: TsConfigJson | undefined;
 	tsConfigPath: string | undefined;
 	watchFiles: string[];
-	forceDisableTelemetry: boolean;
 	timer: AstroTimer;
 }
 
@@ -1788,20 +1808,20 @@ export interface APIContext<Props extends Record<string, any> = Record<string, a
 	locals: App.Locals;
 }
 
-export type Props = Record<string, unknown>;
-
 export interface EndpointOutput {
 	body: Body;
 	encoding?: BufferEncoding;
 }
 
-export type APIRoute = (
-	context: APIContext
+export type APIRoute<Props extends Record<string, any> = Record<string, any>> = (
+	context: APIContext<Props>
 ) => EndpointOutput | Response | Promise<EndpointOutput | Response>;
 
 export interface EndpointHandler {
 	[method: string]: APIRoute | ((params: Params, request: Request) => EndpointOutput | Response);
 }
+
+export type Props = Record<string, unknown>;
 
 export interface AstroRenderer {
 	/** Name of the renderer. */
@@ -1866,6 +1886,10 @@ export interface AstroIntegration {
 			 * the physical file you should import.
 			 */
 			entryPoints: Map<RouteData, URL>;
+			/**
+			 * File path of the emitted middleware
+			 */
+			middlewareEntryPoint: URL | undefined;
 		}) => void | Promise<void>;
 		'astro:build:start'?: () => void | Promise<void>;
 		'astro:build:setup'?: (options: {
@@ -1956,16 +1980,6 @@ export interface SSRElement {
 	children: string;
 }
 
-export interface SSRMetadata {
-	renderers: SSRLoadedRenderer[];
-	pathname: string;
-	hasHydrationScript: boolean;
-	hasDirectives: Set<string>;
-	hasRenderedHead: boolean;
-	headInTree: boolean;
-	clientDirectives: Map<string, string>;
-}
-
 /**
  * A hint on whether the Astro runtime needs to wait on a component to render head
  * content. The meanings:
@@ -1988,9 +2002,6 @@ export interface SSRResult {
 	scripts: Set<SSRElement>;
 	links: Set<SSRElement>;
 	componentMetadata: Map<string, SSRComponentMetadata>;
-	propagators: Map<AstroComponentFactory, AstroComponentInstance>;
-	extraHead: Array<string>;
-	cookies: AstroCookies | undefined;
 	createAstro(
 		Astro: AstroGlobalPartial,
 		props: Record<string, any>,
@@ -1998,11 +2009,30 @@ export interface SSRResult {
 	): AstroGlobal;
 	resolve: (s: string) => Promise<string>;
 	response: ResponseInit;
-	// Bits 1 = astro, 2 = jsx, 4 = slot
-	// As rendering occurs these bits are manipulated to determine where content
-	// is within a slot. This is used for head injection.
-	scope: number;
+	renderers: SSRLoadedRenderer[];
+	/**
+	 * Map of directive name (e.g. `load`) to the directive script code
+	 */
+	clientDirectives: Map<string, string>;
+	/**
+	 * Only used for logging
+	 */
+	pathname: string;
+	cookies: AstroCookies | undefined;
 	_metadata: SSRMetadata;
+}
+
+/**
+ * Ephemeral and mutable state during rendering that doesn't rely
+ * on external configuration
+ */
+export interface SSRMetadata {
+	hasHydrationScript: boolean;
+	hasDirectives: Set<string>;
+	hasRenderedHead: boolean;
+	headInTree: boolean;
+	extraHead: string[];
+	propagators: Map<AstroComponentFactory, AstroComponentInstance>;
 }
 
 /* Preview server stuff */

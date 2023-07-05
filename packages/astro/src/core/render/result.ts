@@ -3,8 +3,6 @@ import type {
 	AstroGlobal,
 	AstroGlobalPartial,
 	Params,
-	Props,
-	RuntimeMode,
 	SSRElement,
 	SSRLoadedRenderer,
 	SSRResult,
@@ -24,18 +22,27 @@ const clientAddressSymbol = Symbol.for('astro.clientAddress');
 const responseSentSymbol = Symbol.for('astro.responseSent');
 
 export interface CreateResultArgs {
+	/**
+	 * Used to provide better error messages for `Astro.clientAddress`
+	 */
 	adapterName: string | undefined;
+	/**
+	 * Value of Astro config's `output` option, true if "server" or "hybrid"
+	 */
 	ssr: boolean;
 	logging: LogOptions;
-	origin: string;
+	/**
+	 * Used to support `Astro.__renderMarkdown` for legacy `<Markdown />` component
+	 */
 	markdown: MarkdownRenderingOptions;
-	mode: RuntimeMode;
 	params: Params;
 	pathname: string;
-	props: Props;
 	renderers: SSRLoadedRenderer[];
 	clientDirectives: Map<string, string>;
 	resolve: (s: string) => Promise<string>;
+	/**
+	 * Used for `Astro.site`
+	 */
 	site: string | undefined;
 	links?: Set<SSRElement>;
 	scripts?: Set<SSRElement>;
@@ -158,9 +165,9 @@ export function createResult(args: CreateResultArgs): SSRResult {
 		scripts: args.scripts ?? new Set<SSRElement>(),
 		links: args.links ?? new Set<SSRElement>(),
 		componentMetadata,
-		propagators: new Map(),
-		extraHead: [],
-		scope: 0,
+		renderers,
+		clientDirectives,
+		pathname,
 		cookies,
 		/** This function returns the `Astro` faux-global */
 		createAstro(
@@ -247,16 +254,15 @@ export function createResult(args: CreateResultArgs): SSRResult {
 			return Astro;
 		},
 		resolve,
+		response,
 		_metadata: {
-			renderers,
-			pathname,
 			hasHydrationScript: false,
 			hasRenderedHead: false,
 			hasDirectives: new Set(),
 			headInTree: false,
-			clientDirectives,
+			extraHead: [],
+			propagators: new Map(),
 		},
-		response,
 	};
 
 	return result;

@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { fileURLToPath } from 'url';
 
 import { getStylesForURL } from '../../../dist/core/render/dev/css.js';
 import { viteID } from '../../../dist/core/util.js';
@@ -30,13 +29,16 @@ describe('Crawling graph for CSS', () => {
 					{
 						id: aboutId,
 						url: aboutId,
+						importers: new Set(),
 					},
 					{
 						id: indexId + '?astro&style.css',
 						url: indexId + '?astro&style.css',
+						importers: new Set([{ id: indexId }]),
 						ssrModule: {},
 					},
 				],
+				importers: new Set(),
 				ssrTransformResult: {
 					deps: [indexId + '?astro&style.css'],
 				},
@@ -47,9 +49,11 @@ describe('Crawling graph for CSS', () => {
 					{
 						id: aboutId + '?astro&style.css',
 						url: aboutId + '?astro&style.css',
+						importers: new Set([{ id: aboutId }]),
 						ssrModule: {},
 					},
 				],
+				importers: new Set(),
 				ssrTransformResult: {
 					deps: [aboutId + '?astro&style.css'],
 				},
